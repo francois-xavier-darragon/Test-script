@@ -9,7 +9,7 @@ NC='\033[0m' # No Color
 # Fonction pour obtenir les branches mergées, triées par date du dernier commit
 get_sorted_merged_branches() {
     git for-each-ref --sort=committerdate refs/remotes/origin/ --format='%(refname:short)' |
-    grep -v "origin/develop" | grep -v "origin/main" |
+    grep -v "origin/develop" | grep -v "origin/main" | grep -v "origin/HEAD" |
     while read branch; do
         if git merge-base --is-ancestor $branch develop; then
             echo "$branch"
@@ -27,31 +27,17 @@ display_merged_branches() {
     echo
 }
 
-# Fonction pour archiver une branche avec un tag
+# Fonction pour créer un tag d'archive pour une branche
 archive_branch() {
     branch_name=$1
     
-    echo -e "${YELLOW}Archivage de la branche : $branch_name${NC}"
+    echo -e "${YELLOW}Création d'un tag d'archive pour la branche : $branch_name${NC}"
     
     git fetch origin $branch_name
     if git tag "archive/$branch_name" origin/$branch_name; then
         echo -e "${GREEN}Tag 'archive/$branch_name' créé pour la branche '$branch_name'.${NC}"
     else
         echo -e "${RED}Erreur lors de la création du tag pour '$branch_name'.${NC}"
-        return 1
-    fi
-}
-
-# Fonction pour supprimer une branche distante
-delete_remote_branch() {
-    branch_name=$1
-    
-    echo -e "${YELLOW}Suppression de la branche distante : $branch_name${NC}"
-    
-    if git push origin --delete $branch_name; then
-        echo -e "${GREEN}La branche distante '$branch_name' a été supprimée.${NC}"
-    else
-        echo -e "${RED}Erreur lors de la suppression de la branche distante '$branch_name'.${NC}"
         return 1
     fi
 }
@@ -75,7 +61,7 @@ main() {
     
     display_merged_branches
     
-    read -p "Voulez-vous archiver ces branches ? (o/n) " confirm_archive
+    read -p "Voulez-vous créer des tags d'archive pour ces branches ? (o/n) " confirm_archive
     if [[ $confirm_archive != [oO] ]]; then
         echo -e "${YELLOW}Opération annulée.${NC}"
         exit 0
@@ -93,19 +79,8 @@ main() {
         echo -e "${RED}Erreur lors de la poussée des tags vers le dépôt distant.${NC}"
     fi
     
-    read -p "Voulez-vous supprimer ces branches distantes ? (o/n) " confirm_delete
-    if [[ $confirm_delete != [oO] ]]; then
-        echo -e "${YELLOW}Les branches n'ont pas été supprimées. Opération terminée.${NC}"
-        exit 0
-    fi
-    
-    for branch in $merged_branches; do
-        if [ ! -z "$branch" ]; then
-            delete_remote_branch $branch
-        fi
-    done
-    
-    echo -e "${GREEN}Opération terminée. Les branches mergées dans develop ont été archivées et supprimées si demandé.${NC}"
+    echo -e "${GREEN}Opération terminée. Des tags d'archive ont été créés pour toutes les branches mergées dans develop.${NC}"
+    echo -e "${YELLOW}N'oubliez pas que vous devrez supprimer manuellement les branches si nécessaire.${NC}"
 }
 
 # Exécuter le script
